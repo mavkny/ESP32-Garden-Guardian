@@ -1,0 +1,21 @@
+[package]
+name = "esp32-webui"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow        = "1"
+log           = "0.4"
+
+esp-idf-sys   = { version = "0.36.1", features = ["binstart"] }
+esp-idf-hal   = "0.45.2"
+esp-idf-svc   = { version = "0.51.0", default-features = false, features = ["std"] }
+
+embedded-svc  = "0.28"
+embedded-io   = "0.6"
+
+[build-dependencies]
+embuild = { version = "0.33.1", features = ["espidf"] }
+
+[package.metadata.esp-idf-sys]
+esp_idf_sdkconfig_defaults = "sdkconfig.defaults"

@@ -1,0 +1,33 @@
+# 4MB Flash & eigene Partitionstabelle
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+# Pfad bitte an dein Repo anpassen (prod!):
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="/home/marvin/projekte/esp32-webui-prod/partitions_singleapp.csv"
+CONFIG_PARTITION_TABLE_OFFSET=0x8000
+CONFIG_PARTITION_TABLE_MD5=y
+
+# Mehr Stack für main (du nutzt eh Threads)
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=12288
+
+# BT aus = RAM sparen
+CONFIG_BT_ENABLED=n
+
+# Sockets für HTTP ok
+CONFIG_LWIP_MAX_SOCKETS=16
+
+# Kleineres Binary
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+
+
+###### Watchdog-Entschärfung (verhindert deine IDLE1-Warnungen) ######
+CONFIG_ESP_TASK_WDT=y
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
+CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0=y
+CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1=n
+# ^ Idle-Überwachung nur auf Core0 lassen. Core1 ist bei dir oft durch pthread ausgelastet.
+
+
+###### Event-Loop robuster (kleiner Sicherheitszuschlag) ######
+CONFIG_ESP_EVENT_TASK_STACK_SIZE=4096
+# Default ist knapp bemessen; 4096 erspart dir sporadische „LoadProhibited“ rund um esp_event.
+
