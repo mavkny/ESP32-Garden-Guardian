@@ -1,1 +1,5 @@
 /target
+/.embuild/
+/.lib-compat/
+credentials.toml
+src/credentials.rs

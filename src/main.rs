@@ -1,3 +1,4 @@
+mod credentials;  // Auto-generiert aus credentials.toml
 mod config;
 mod sensor;
 mod control;
@@ -14,7 +15,11 @@ use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::log::EspLogger;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::wifi::{BlockingWifi, ClientConfiguration, Configuration as WifiCfg, EspWifi};
+// mDNS temporär deaktiviert (braucht ESP-IDF Komponente)
+// use esp_idf_svc::mdns::EspMdns;
 use esp_idf_sys as _;
+
+// const MDNS_HOSTNAME: &str = "kneplant";
 
 fn main() -> Result<()> {
     EspLogger::initialize_default();
@@ -55,6 +60,14 @@ fn app() -> Result<()> {
     // IP über das Wrapper-Objekt (kein Parallel-Borrow von esp_wifi)
     let ip_info = wifi.wifi().sta_netif().get_ip_info()?;
     log::info!("WiFi connected. IP: {}", ip_info.ip);
+
+    // mDNS temporär deaktiviert (braucht ESP-IDF mdns Komponente)
+    // TODO: ESP_IDF_COMPONENTS="mdns" aktivieren für kneplant.local
+    // let mut mdns = EspMdns::take()?;
+    // mdns.set_hostname(MDNS_HOSTNAME)?;
+    // mdns.set_instance_name("KnePlant Garden Guardian")?;
+    // mdns.add_service(None, "_http", "_tcp", 80, &[])?;
+    // log::info!("mDNS: http://{}.local", MDNS_HOSTNAME);
 
     // HW
     let (i2c, relay, pump) = hw::init_hw(pins, i2c0, config::I2C_HZ)?;

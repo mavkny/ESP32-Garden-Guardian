@@ -1,7 +1,7 @@
 use core::f32;
 
-pub const WIFI_SSID: &str = "SSID";
-pub const WIFI_PASS: &str = "PASSWORD!";
+// WiFi-Credentials werden aus credentials.toml geladen (build.rs → src/credentials.rs)
+pub use crate::credentials::{WIFI_SSID, WIFI_PASS};
 
 /*** Hardware & Sensor ***/
 pub const I2C_HZ: u32 = 400_000;
@@ -18,8 +18,13 @@ pub const MANUAL_PUMP_SECS: u64 = 5;
 
 /*** Automatik ***/
 pub const AUTO_PUMP_ENABLE: bool = true;
-pub const AUTO_MOISTURE_THRESHOLD: u16 = 670; // <= 670 -> Pumpe an
-pub const AUTO_PUMP_SECS: u64 = 7;            // Laufzeit in Sekunden
+
+// Hysterese: Pumpe AN wenn <= LOW, AUS-Bedingung wenn >= HIGH
+pub const AUTO_MOISTURE_LOW: u16 = 750;   // Pumpe an wenn <= 750 (trocken)
+pub const AUTO_MOISTURE_HIGH: u16 = 850;  // Erst wieder prüfen wenn >= 850 (feucht genug)
+
+pub const AUTO_PUMP_SECS: u64 = 7;        // Laufzeit in Sekunden
+pub const AUTO_COOLDOWN_SECS: u64 = 300;  // 5 Minuten Pause nach Pumpe
 
 /*** App-Model ***/
 #[derive(Clone, Debug)]

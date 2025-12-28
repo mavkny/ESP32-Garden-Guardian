@@ -42,6 +42,8 @@ fn run_pump(
     secs: u64,
     state: &Arc<Mutex<Reading>>,
 ) {
+    log::info!("Pumpe EIN für {} Sekunden", secs);
+
     // Einschalten
     let _ = set_relay(relay, true);
     let _ = set_with_polarity(pump, true, PUMP_ACTIVE_LOW);
@@ -61,6 +63,8 @@ fn run_pump(
         let mut s = state.lock().unwrap();
         s.pump_on = false;
     }
+
+    log::info!("Pumpe AUS");
 }
 
 /// Startet den Steuer-Thread. Liefert einen Sender für manuelle Pump-Befehle.
@@ -82,6 +86,10 @@ pub fn spawn_control(
     .stack_size(8 * 1024)
     .spawn(move || {
         let mut last_sensor = Instant::now() - Duration::from_secs(10);
+        let mut last_auto_pump = Instant::now() - Duration::from_secs(config::AUTO_COOLDOWN_SECS + 1);
+
+        // Hysterese-State: true = war feucht genug, darf wieder pumpen
+        let mut can_auto_pump = true;
 
         loop {
             // 1) Kommandos mit Timeout behandeln
@@ -89,6 +97,7 @@ pub fn spawn_control(
                 match cmd {
                     ControlCmd::ManualPump(secs) => {
                         run_pump(&mut relay, &mut pump, secs, &state);
+                        last_auto_pump = Instant::now(); // Manuelles Pumpen zählt auch für Cooldown
                     }
                 }
             }
@@ -108,11 +117,27 @@ pub fn spawn_control(
                     pump_on_now = s.pump_on;
                 }
 
-                // 3) Automatik: Feuchte <= Threshold -> Pumpe für AUTO_PUMP_SECS
+                // 3) Automatik mit Hysterese + Cooldown
                 if config::AUTO_PUMP_ENABLE {
                     if let Some(m) = moist_val {
-                        if !pump_on_now && m <= config::AUTO_MOISTURE_THRESHOLD {
+                        // Hysterese: Reset wenn feucht genug
+                        if m >= config::AUTO_MOISTURE_HIGH {
+                            if !can_auto_pump {
+                                log::info!("Hysterese: Feuchtigkeit {} >= {}, Auto-Pump wieder erlaubt",
+                                          m, config::AUTO_MOISTURE_HIGH);
+                            }
+                            can_auto_pump = true;
+                        }
+
+                        // Prüfe ob pumpen nötig + erlaubt
+                        let cooldown_ok = last_auto_pump.elapsed() >= Duration::from_secs(config::AUTO_COOLDOWN_SECS);
+
+                        if !pump_on_now && can_auto_pump && cooldown_ok && m <= config::AUTO_MOISTURE_LOW {
+                            log::info!("Auto-Pump: Feuchtigkeit {} <= {} (Cooldown OK)",
+                                      m, config::AUTO_MOISTURE_LOW);
                             run_pump(&mut relay, &mut pump, config::AUTO_PUMP_SECS, &state);
+                            last_auto_pump = Instant::now();
+                            can_auto_pump = false; // Erst wieder wenn >= HIGH
                         }
                     }
                 }

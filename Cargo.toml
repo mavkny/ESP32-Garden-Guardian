@@ -16,6 +16,7 @@ embedded-io   = "0.6"
 
 [build-dependencies]
 embuild = { version = "0.33.1", features = ["espidf"] }
+toml = "0.8"
 
 [package.metadata.esp-idf-sys]
 esp_idf_sdkconfig_defaults = "sdkconfig.defaults"
