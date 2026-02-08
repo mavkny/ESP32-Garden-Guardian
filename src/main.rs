@@ -70,7 +70,7 @@ fn app() -> Result<()> {
     // log::info!("mDNS: http://{}.local", MDNS_HOSTNAME);
 
     // HW
-    let (i2c, relay, pump) = hw::init_hw(pins, i2c0, config::I2C_HZ)?;
+    let (i2c, relay) = hw::init_hw(pins, i2c0, config::I2C_HZ)?;
 
     // Shared State
     let state = Arc::new(Mutex::new(Reading {
@@ -80,7 +80,7 @@ fn app() -> Result<()> {
         last_pump_us: None,
     }));
 
-    let ctrl_tx = control::spawn_control(i2c, relay, pump, state.clone())?;
+    let ctrl_tx = control::spawn_control(i2c, relay, state.clone())?;
     let _server = web::start_web(state, ctrl_tx)?;
 
     // Reconnect-„Watchdog“ im selben Thread (keine 'static-Lifetime nötig)

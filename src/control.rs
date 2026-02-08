@@ -1,7 +1,7 @@
 use anyhow::Result;
-use crate::config::{self, Reading, RELAY_ACTIVE_LOW, PUMP_ACTIVE_LOW};
+use crate::config::{self, Reading, RELAY_ACTIVE_LOW};
 use crate::sensor;
-use esp_idf_hal::gpio::{Gpio32, Gpio33, Output, PinDriver};
+use esp_idf_hal::gpio::{Gpio33, Output, PinDriver};
 use esp_idf_hal::i2c::I2cDriver;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
@@ -17,17 +17,8 @@ fn now_us() -> u64 {
 }
 
 #[inline]
-fn set_with_polarity(pin: &mut PinDriver<Gpio32, Output>, on: bool, active_low: bool) -> anyhow::Result<()> {
-    if active_low {
-        if on { pin.set_low()?; } else { pin.set_high()?; }
-    } else {
-        if on { pin.set_high()?; } else { pin.set_low()?; }
-    }
-    Ok(())
-}
-
-#[inline]
 fn set_relay(relay: &mut PinDriver<Gpio33, Output>, on: bool) -> anyhow::Result<()> {
+    // Mit ULN2003A: GPIO HIGH → ULN sinkt → Relais AN
     if RELAY_ACTIVE_LOW {
         if on { relay.set_low()?; } else { relay.set_high()?; }
     } else {
@@ -38,15 +29,13 @@ fn set_relay(relay: &mut PinDriver<Gpio33, Output>, on: bool) -> anyhow::Result<
 
 fn run_pump(
     relay: &mut PinDriver<Gpio33, Output>,
-    pump: &mut PinDriver<Gpio32, Output>,
     secs: u64,
     state: &Arc<Mutex<Reading>>,
 ) {
     log::info!("Pumpe EIN für {} Sekunden", secs);
 
-    // Einschalten
+    // Relais einschalten (Pumpe läuft über Relais-Kontakt)
     let _ = set_relay(relay, true);
-    let _ = set_with_polarity(pump, true, PUMP_ACTIVE_LOW);
     {
         let mut s = state.lock().unwrap();
         s.pump_on = true;
@@ -56,8 +45,7 @@ fn run_pump(
     // feste Laufzeit
     thread::sleep(Duration::from_secs(secs));
 
-    // Sicher ausschalten
-    let _ = set_with_polarity(pump, false, PUMP_ACTIVE_LOW);
+    // Relais ausschalten
     let _ = set_relay(relay, false);
     {
         let mut s = state.lock().unwrap();
@@ -71,13 +59,11 @@ fn run_pump(
 pub fn spawn_control(
     mut i2c: I2cDriver<'static>,
     mut relay: PinDriver<'static, Gpio33, Output>,
-    mut pump:  PinDriver<'static, Gpio32, Output>,
     state: Arc<Mutex<Reading>>,
 ) -> Result<mpsc::Sender<ControlCmd>> {
 
-    // Initial AUS anhand der Polarität
+    // Relais initial AUS
     let _ = set_relay(&mut relay, false);
-    let _ = set_with_polarity(&mut pump, false, PUMP_ACTIVE_LOW);
 
     let (tx, rx) = mpsc::channel::<ControlCmd>();
 
@@ -96,7 +82,7 @@ pub fn spawn_control(
             if let Ok(cmd) = rx.recv_timeout(Duration::from_millis(50)) {
                 match cmd {
                     ControlCmd::ManualPump(secs) => {
-                        run_pump(&mut relay, &mut pump, secs, &state);
+                        run_pump(&mut relay, secs, &state);
                         last_auto_pump = Instant::now(); // Manuelles Pumpen zählt auch für Cooldown
                     }
                 }
@@ -135,7 +121,7 @@ pub fn spawn_control(
                         if !pump_on_now && can_auto_pump && cooldown_ok && m <= config::AUTO_MOISTURE_LOW {
                             log::info!("Auto-Pump: Feuchtigkeit {} <= {} (Cooldown OK)",
                                       m, config::AUTO_MOISTURE_LOW);
-                            run_pump(&mut relay, &mut pump, config::AUTO_PUMP_SECS, &state);
+                            run_pump(&mut relay, config::AUTO_PUMP_SECS, &state);
                             last_auto_pump = Instant::now();
                             can_auto_pump = false; // Erst wieder wenn >= HIGH
                         }

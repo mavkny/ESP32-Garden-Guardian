@@ -8,10 +8,10 @@ pub const I2C_HZ: u32 = 400_000;
 pub const ADDR: u8 = 0x36; // STEMMA Soil / Seesaw default
 
 // Relais-Polaritäten getrennt konfigurierbar:
-// true  => aktiv bei LOW (low-trigger, OFF = HIGH)
-// false => aktiv bei HIGH (aktiv-high,   OFF = LOW)
-pub const RELAY_ACTIVE_LOW: bool = true;   // Relais
-pub const PUMP_ACTIVE_LOW:  bool = false;  // Pumpe (bei LOW offline => aktiv-high)
+// Mit ULN2003A dazwischen: GPIO HIGH → ULN sinkt → Relais-IN = GND → Relais AN
+// Also: RELAY_ACTIVE_LOW = false (GPIO HIGH = Relais AN)
+pub const RELAY_ACTIVE_LOW: bool = false;  // Relais über ULN (invertiert!)
+// PUMP_ACTIVE_LOW entfernt - Pumpe läuft jetzt über Relais-Kontakt
 
 // Dauer für den manuellen Pumpstoß (Sekunden)
 pub const MANUAL_PUMP_SECS: u64 = 5;
